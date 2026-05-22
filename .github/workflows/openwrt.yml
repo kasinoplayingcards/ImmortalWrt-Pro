@@ -20,13 +20,18 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    # ================= 清理空间 =================
+
     - name: Free disk space
       run: |
         sudo rm -rf /usr/share/dotnet || true
         sudo rm -rf /usr/local/lib/android || true
         sudo rm -rf /opt/ghc || true
         sudo docker image prune -af || true
+
         sudo apt-get clean
+
+    # ================= 编译环境 =================
 
     - name: Initialization environment
       run: |
@@ -55,7 +60,14 @@ jobs:
         curl \
         cmake \
         ninja-build \
-        ccache
+        ccache \
+        libelf-dev \
+        ecj \
+        fastjar \
+        java-propose-classpath \
+        python3-setuptools
+
+    # ================= 拉源码 =================
 
     - name: Clone source
       run: |
@@ -69,8 +81,11 @@ jobs:
         rm -rf staging_dir
         rm -rf build_dir
 
+    # ================= 复制配置 =================
+
     - name: Copy custom files
       run: |
+
         cp .config openwrt/.config
 
         cp feeds.conf.default openwrt/feeds.conf.default
@@ -81,6 +96,8 @@ jobs:
         cp diy-part1.sh openwrt/
         cp diy-part2.sh openwrt/
 
+    # ================= 更新 feeds =================
+
     - name: Update feeds
       run: |
         cd openwrt
@@ -89,9 +106,15 @@ jobs:
 
         ./scripts/feeds update -a
 
-        ./scripts/feeds install -a
+        # 不再 install -a（防止 metadata 爆炸）
+
+        ./scripts/feeds install luci
+        ./scripts/feeds install packages
+        ./scripts/feeds install nikki
 
         ./diy-part2.sh
+
+    # ================= 生成配置 =================
 
     - name: Generate config
       run: |
@@ -99,18 +122,25 @@ jobs:
 
         make defconfig
 
+    # ================= 下载源码 =================
+
     - name: Download packages
       run: |
         cd openwrt
 
         make download -j8
 
+    # ================= 修复 host 缓存 =================
+
     - name: Clean broken host cache
       run: |
         cd openwrt
 
         rm -rf build_dir/host/libtool-*
+        rm -rf staging_dir/hostpkg
         rm -rf staging_dir/host
+
+    # ================= 编译 =================
 
     - name: Compile firmware
       run: |
@@ -118,8 +148,13 @@ jobs:
 
         make -j2 V=s
 
+    # ================= 上传固件 =================
+
     - name: Upload firmware
       uses: actions/upload-artifact@v4
       with:
         name: OpenWrt-x86-64-EFI
-        path: openwrt/bin/targets/
+        path: |
+          openwrt/bin/targets/x86/64/*.img.gz
+          openwrt/bin/targets/x86/64/*.manifest
+          openwrt/bin/targets/x86/64/*.kernel
