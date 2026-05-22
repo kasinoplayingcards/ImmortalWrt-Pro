@@ -1,1 +1,17 @@
+payload:
 
+  # AI服务
+  - DOMAIN-SUFFIX,openai.com
+  - DOMAIN-SUFFIX,chatgpt.com
+  - DOMAIN-SUFFIX,anthropic.com
+  - DOMAIN-SUFFIX,gemini.google.com
+
+  # TikTok
+  - DOMAIN-SUFFIX,tiktok.com
+  - DOMAIN-SUFFIX,tiktokcdn.com
+  - DOMAIN-SUFFIX,tiktokv.com
+
+  # YouTube
+  - DOMAIN-SUFFIX,youtube.com
+  - DOMAIN-SUFFIX,googlevideo.com
+  - DOMAIN-SUFFIX,ytimg.com
