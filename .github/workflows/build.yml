@@ -1,4 +1,4 @@
-name: ImmortalWrt Full Build
+name: ImmortalWrt-Pro Build
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clean space
+      - name: Free space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
           sudo apt-get clean
@@ -31,19 +31,22 @@ jobs:
         run: |
           git clone $REPO_URL -b $REPO_BRANCH openwrt
 
-      - name: Feeds
+      - name: Feeds update
         run: |
           cp feeds.conf.default openwrt/feeds.conf.default
           cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Apply config
+      - name: Prepare files
         run: |
           cp -r files openwrt/
           cp .config openwrt/
           cp diy-part1.sh openwrt/
           cp diy-part2.sh openwrt/
+
+      - name: Build prepare
+        run: |
           cd openwrt
           chmod +x diy-part1.sh diy-part2.sh
           ./diy-part1.sh
@@ -54,7 +57,7 @@ jobs:
           cd openwrt
           make download -j8
 
-      - name: Build
+      - name: Build firmware
         run: |
           cd openwrt
           make -j$(nproc) || make -j1 V=s
@@ -62,5 +65,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: ImmortalWrt-Full
+          name: ImmortalWrt-Pro
           path: openwrt/bin
