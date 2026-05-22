@@ -1,9 +1,9 @@
-src-git packages https://github.com/immortalwrt/packages.git
-src-git luci https://github.com/immortalwrt/luci.git
+src-git packages https://github.com/immortalwrt/packages.git;openwrt-24.10
+src-git luci https://github.com/immortalwrt/luci.git;openwrt-24.10
 
-# PassWall
-src-git passwall https://github.com/xiaorouji/openwrt-passwall.git
-src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git
+# PassWall（锁稳定分支）
+src-git passwall https://github.com/xiaorouji/openwrt-passwall.git;main
+src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git;main
 
-# Nikki
-src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git
+# Nikki（建议锁 stable 分支）
+src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main
