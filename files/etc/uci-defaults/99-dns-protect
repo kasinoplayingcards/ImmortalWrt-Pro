@@ -1,1 +1,66 @@
+#!/bin/sh
 
+# ==================================================
+# DNS 强制接管（防污染核心）
+# ==================================================
+
+# 1. 关闭 dnsmasq 解析外部 DNS（防泄漏）
+uci set dhcp.@dnsmasq[0].noresolv='1'
+
+# 清空旧 DNS
+uci delete dhcp.@dnsmasq[0].server 2>/dev/null
+
+# 设置可靠上游 DNS（可改）
+uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+uci add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+
+# ==================================================
+# 2. DNS 强制劫持（核心防绕过）
+# ==================================================
+
+uci -q delete firewall.dns_hijack
+
+uci add firewall redirect
+uci set firewall.@redirect[-1].name='DNS-Hijack'
+uci set firewall.@redirect[-1].src='lan'
+uci set firewall.@redirect[-1].proto='tcp udp'
+uci set firewall.@redirect[-1].src_dport='53'
+uci set firewall.@redirect[-1].dest_port='53'
+uci set firewall.@redirect[-1].target='DNAT'
+
+# ==================================================
+# 3. 防 DoH / DoT 基础封锁（关键）
+# ==================================================
+
+# 常见 DoH 端口封锁（基础版）
+uci add firewall rule
+uci set firewall.@rule[-1].name='Block-DoT-853'
+uci set firewall.@rule[-1].src='lan'
+uci set firewall.@rule[-1].dest_port='853'
+uci set firewall.@rule[-1].proto='tcp udp'
+uci set firewall.@rule[-1].target='REJECT'
+
+# ==================================================
+# 4. IPv6 DNS 防泄漏（双保险）
+# ==================================================
+
+uci set dhcp.lan.dhcpv6='disabled'
+uci set dhcp.lan.ra='disabled'
+uci set dhcp.lan.ndp='disabled'
+
+# ==================================================
+# 5. 应用配置
+# ==================================================
+
+uci commit dhcp
+uci commit firewall
+
+/etc/init.d/dnsmasq restart
+/etc/init.d/firewall restart
+
+# ==================================================
+# 6. 只执行一次
+# ==================================================
+rm -f /etc/uci-defaults/99-dns-protect
+
+exit 0
