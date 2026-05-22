@@ -1,1 +1,40 @@
+#!/bin/sh
 
+# =========================
+# 基础 zone 优化
+# =========================
+uci set firewall.@defaults[0].flow_offloading='1'
+uci set firewall.@defaults[0].flow_offloading_hw='1'
+
+# =========================
+# LAN zone 强化
+# =========================
+uci set firewall.@zone[0].input='ACCEPT'
+uci set firewall.@zone[0].output='ACCEPT'
+uci set firewall.@zone[0].forward='ACCEPT'
+
+# =========================
+# WAN zone 安全
+# =========================
+uci set firewall.@zone[1].input='REJECT'
+uci set firewall.@zone[1].output='ACCEPT'
+uci set firewall.@zone[1].forward='REJECT'
+
+# =========================
+# SSH 限制（只允许 LAN）
+# =========================
+uci set dropbear.@dropbear[0].Interface='lan'
+
+# =========================
+# NAT优化（提升吞吐）
+# =========================
+uci set firewall.@defaults[0].fullcone='1' 2>/dev/null
+
+uci commit firewall
+
+/etc/init.d/firewall restart
+
+# 一次性执行
+rm -f /etc/uci-defaults/99-firewall-tune
+
+exit 0
