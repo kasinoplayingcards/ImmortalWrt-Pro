@@ -1,7 +1,8 @@
+# 🔽 官方标准基础依赖源
 src-git packets https://github.com/immortalwrt/packages.git;openwrt-23.05
 src-git luci https://github.com/immortalwrt/luci.git;openwrt-23.05
 src-git routing https://github.com/openwrt/routing.git;openwrt-23.05
 src-git telephony https://github.com/openwrt/telephony.git;openwrt-23.05
 
-# ⚡ 注入包含 luci-app-nikki 的第三方核心高速扩展源
-src-git morytyann https://github.com/morytyann/OpenWrt-Packages.git;main
+# ⚡ 注入 Nikki 官方公开的高速独立扩展源（全公开、免密、不撞墙）
+src-git nikki https://github.com/nikki-core/openwrt-nikki.git;main
