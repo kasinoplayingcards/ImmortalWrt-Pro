@@ -57,7 +57,7 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: 🚀 降维打击：强注 Nikki 并强制排除同名冲突
+    - name: 🚀 降维打击 2.0：通过高容错 Zip 分流技术强注 Nikki
       run: |
         cd openwrt
         
@@ -68,8 +68,16 @@ jobs:
         # 创建纯净的目标物理口袋
         mkdir -p package/nikki
         
-        # 利用 HTTP 压缩包强注 Nikki 官方最新 main 源码
-        curl -L https://github.com/nikki-core/openwrt-nikki/tarball/main | tar -xz -C package/nikki --strip-components=1
+        # 核心升级：换用 wget 5次重试抓取 Zip 压缩包，彻底根除因流式传输断流引发的解压失败
+        echo "=== 📥 开始拉取 Nikki 官方最新源码包... ==="
+        wget --tries=5 --timeout=30 -O nikki.zip https://github.com/nikki-core/openwrt-nikki/archive/refs/heads/main.zip
+        
+        # 精准解压并剥离一层主目录
+        unzip -q nikki.zip
+        mv openwrt-nikki-main/* package/nikki/
+        
+        # 清理缓冲垃圾
+        rm -rf nikki.zip openwrt-nikki-main
         
         echo "=== 🟢 Nikki 源码强注成功！结构验证如下 ==="
         ls -la package/nikki
@@ -116,7 +124,6 @@ jobs:
       run: |
         cd openwrt
         make download -j8
-        # 强力清洗：只要小于 1024 字节，直接删掉防止编译报错
         find dl -size -1024c -exec rm -f {} \;
 
     - name: 🚀 生产环境核心编译 (双线程安全稳健模式)
@@ -152,6 +159,5 @@ jobs:
         echo "❌ 编译因 [Exit Code 2] 深度熔断！正在为您打捞最后 100 行核心错误现场..."
         echo "=========================================================================="
         cd openwrt
-        # 自动抓取包含 error 信息的底层编译日志，直接打印到屏幕
         find logs/package/ -name "*.txt" -exec sh -c 'echo "=== Log for {} ==="; tail -n 50 {}' \; 2>/dev/null || true
         make -j1 V=s || true
