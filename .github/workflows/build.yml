@@ -1,4 +1,4 @@
-name: Build ImmortalWrt Nikki Pro Final
+name: Build ImmortalWrt Nikki Pro Stable
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
         sudo chmod 600 /mnt/swap_armor
         sudo mkswap /mnt/swap_armor
         sudo swapon /mnt/swap_armor
-        echo "=== 🟢 专属虚拟内存叠加成功！当前系统物理+虚拟总内存如下 ==="
+        echo "=== 🟢 专属虚拟内存叠加成功！ ==="
         free -h
 
     - name: 📦 安装官方标准构建依赖链
@@ -57,18 +57,23 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: 🚀 降维打击：通过本地 package 直接强注 Nikki 官方源 (绕过所有鉴权死锁)
+    - name: 🚀 降维打击：通过 HTTP 压缩包强注 Nikki (100% 免疫鉴权和超时错误)
       run: |
         cd openwrt
-        # 使用 depth=1 绕过 Feeds 系统的账号密码鉴权死锁，直接把纯净的 Nikki 源码强行拉入本地包目录
-        git clone --depth=1 https://github.com/nikki-core/openwrt-nikki.git package/nikki
+        mkdir -p package/nikki
+        
+        # 核心黑魔法：拉取 nikki-core 官方主分支源码压缩包，剥离一层目录后精准解压到本地 package/nikki
+        curl -L https://github.com/nikki-core/openwrt-nikki/tarball/main | tar -xz -C package/nikki --strip-components=1
+        
+        echo "=== 🟢 Nikki 源码强注成功！结构验证如下 ==="
+        ls -la package/nikki
 
     - name: 📑 载入核心菜单并强行智能化注入底层
       run: |
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         cd openwrt
         
-        # 智能化网桥盲插脚本 (192.168.11.1)
+        # 智能化网桥盲插脚本（192.168.11.1）
         mkdir -p files/etc/uci-defaults
         cat << 'EOF' > files/etc/uci-defaults/99-custom-settings
         #!/bin/sh
@@ -107,11 +112,10 @@ jobs:
         make download -j8
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: 🚀 生产环境核心编译 (真实环境拒绝糊弄模式)
+    - name: 🚀 生产环境核心编译 (双线程安全稳健模式)
       run: |
         cd openwrt
-        echo "=== 🟢 阶段 1：启动双线程稳健编译，日志实时大字输出 ==="
-        # 删除了 > compile_detail.log 和 || true，让所有编译步骤和真实报错无处可藏
+        echo "=== 🟢 阶段 1：启动双线程稳健编译 ==="
         make -j2
 
     - name: 📂 整理并输出全套固件 (放开所有限制，正常生成)
@@ -127,14 +131,14 @@ jobs:
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
         fi
 
-    - name: 💾 上传你专属的 Nikki 固件产物
+    - name: 💾 上传 Nikki 版专属固件
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: ImmortalWrt_X86_64_Nikki_Pro
+        name: ImmortalWrt_23.05_Nikki_Stable
         path: ${{ env.FIRMWARE_PATH }}/*
 
-    - name: 🚨 应急打捞：若编译熔断失败触发此步
+    - name: 🚨 应急打捞
       if: failure()
       run: |
-        echo "=== 🚨 编译未能顺利通过！请往上滚动网页查看具体的黑框红字报错... ==="
+        echo "=== 🚨 编译在某一步熔断了！ ==="
