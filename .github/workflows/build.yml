@@ -57,7 +57,7 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: 🚀 降维打击 3.0：改用轻量级单层 Git 克隆注入 Nikki (免疫404)
+    - name: 🚀 降维打击 4.0：改用社区高可用镜像源强制注入 Nikki (免疫 Exit Code 128)
       run: |
         cd openwrt
         
@@ -68,14 +68,14 @@ jobs:
         # 创建纯净的目标物理口袋
         mkdir -p package/nikki
         
-        # 终极修正：放弃不稳定的网页版 zip，直接用 git clone --depth=1 去撞官方主力分支
-        echo "=== 📥 启动 Git 底层协议拉取 Nikki 源码... ==="
-        git clone --depth=1 https://github.com/nikki-core/openwrt-nikki.git nikki_raw
+        # 终极修复：放弃无法访问的原版仓库，改用完美存活的社区同步镜像源
+        echo "=== 📥 启动社区高可用源拉取 Nikki 源码... ==="
+        git clone --depth=1 https://github.com/chinasun0221/openwrt-nikki.git nikki_raw
         
         # 将克隆下来的内容精准平移进口袋 (包括隐藏文件)
         cp -a nikki_raw/. package/nikki/
         
-        # 清理残留的缓存
+        # 清理残余缓存
         rm -rf nikki_raw
         
         echo "=== 🟢 Nikki 源码强注成功！结构验证如下 ==="
@@ -114,9 +114,12 @@ jobs:
         EOF
         chmod +x files/etc/uci-defaults/99-custom-settings
 
-    - name: 🧬 固件结构预校验
+    - name: 🧬 固件结构预校验 (强注非交互终端环境变量)
       run: |
         cd openwrt
+        # 强制声明哑终端，压制任何潜在的 menuconfig 图形弹窗企图
+        export TERMINFO=/usr/share/terminfo
+        export TERM=dumb
         make defconfig
 
     - name: 📥 下载编译依赖包与严厉清洗
@@ -129,6 +132,7 @@ jobs:
       run: |
         cd openwrt
         echo "=== 🟢 阶段 1：启动双线程稳健编译 ==="
+        export TERM=dumb
         make -j2 V=s
 
     - name: 📂 整理并输出全套固件 (放开所有限制，正常生成)
