@@ -1,4 +1,4 @@
-name: Build ImmortalWrt Stable Pro Final
+name: Build ImmortalWrt Nikki Pro Final
 
 on:
   workflow_dispatch:
@@ -26,7 +26,6 @@ jobs:
 
     - name: 🛠️ 核心突破：安全叠加 4GB 独立虚拟内存装甲
       run: |
-        # 在空间充足的 /mnt 目录下创建专属的虚拟内存文件，完美避开系统自带 /swapfile 冲突
         sudo dd if=/dev/zero of=/mnt/swap_armor bs=1M count=4096
         sudo chmod 600 /mnt/swap_armor
         sudo mkswap /mnt/swap_armor
@@ -58,12 +57,18 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
+    - name: 🚀 降维打击：通过本地 package 直接强注 Nikki 官方源 (绕过所有鉴权死锁)
+      run: |
+        cd openwrt
+        # 使用 depth=1 绕过 Feeds 系统的账号密码鉴权死锁，直接把纯净的 Nikki 源码强行拉入本地包目录
+        git clone --depth=1 https://github.com/nikki-core/openwrt-nikki.git package/nikki
+
     - name: 📑 载入核心菜单并强行智能化注入底层
       run: |
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         cd openwrt
         
-        # 自动化注入你专属的盲插网口网桥设置与防污染网络环境
+        # 智能化网桥盲插脚本 (192.168.11.1)
         mkdir -p files/etc/uci-defaults
         cat << 'EOF' > files/etc/uci-defaults/99-custom-settings
         #!/bin/sh
@@ -102,39 +107,34 @@ jobs:
         make download -j8
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: 🚀 生产环境核心编译 (强行抓取致命错误日志模式)
+    - name: 🚀 生产环境核心编译 (真实环境拒绝糊弄模式)
       run: |
         cd openwrt
-        echo "=== 🟢 阶段 1：启动双线程稳健编译，并将所有细节写入本地日志 ==="
-        # 使用 || true 保证编译如果受阻挂掉，也不断开工作流，强制进入下一步捞日志
-        make -j2 > compile_detail.log 2>&1 || true
-        echo "=== 🟡 编译动作已结束（无论成功或失败），开始核对产物... ==="
+        echo "=== 🟢 阶段 1：启动双线程稳健编译，日志实时大字输出 ==="
+        # 删除了 > compile_detail.log 和 || true，让所有编译步骤和真实报错无处可藏
+        make -j2
 
     - name: 📂 整理并输出全套固件 (放开所有限制，正常生成)
+      if: success()
       run: |
         cd openwrt
         if [ -d "bin/targets/x86/64/" ] && [ "$(ls -A bin/targets/x86/64/)" ]; then
           echo "=== 🎉 发现固件产物！正在清理不必要的 packages 文件夹... ==="
           cd bin/targets/x86/64/
-          
-          # 只删除庞大的 ipk 安装包目录，对所有镜像文件（.img, .img.gz）绝不动手
           rm -rf packages
-          
           echo "=== 🟢 当前生成的全套固件列表如下： ==="
           ls -lh
-          
-          echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-        else
-          echo "=== 🚨 警告：固件未生成！正在提取最后 2000 行致命编译报错... ==="
-          mkdir -p bin/targets/x86/64/
-          echo "==================== HARDWARE & COMPILER ERROR LOG TAIL ====================" > bin/targets/x86/64/CRITICAL_ERROR_LOG.txt
-          tail -n 2000 compile_detail.log >> bin/targets/x86/64/CRITICAL_ERROR_LOG.txt
-          cd bin/targets/x86/64/
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
         fi
 
-    - name: 💾 上传编译结果 (固件产物或诊断日志)
+    - name: 💾 上传你专属的 Nikki 固件产物
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: ImmortalWrt_X86_64_All_Formats
+        name: ImmortalWrt_X86_64_Nikki_Pro
         path: ${{ env.FIRMWARE_PATH }}/*
+
+    - name: 🚨 应急打捞：若编译熔断失败触发此步
+      if: failure()
+      run: |
+        echo "=== 🚨 编译未能顺利通过！请往上滚动网页查看具体的黑框红字报错... ==="
