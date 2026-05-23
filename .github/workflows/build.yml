@@ -57,45 +57,38 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: 🚀 降维打击 5.0：通过公共综合大仓高可靠性提取并注入 Nikki (完美破解128)
+    - name: 🚀 降维打击 7.0：利用 ImmortalWrt 官方原生 Feeds 注入 Nikki (100% 根除128)
       run: |
         cd openwrt
         
-        # 核心防御：强行拔除原有 Feeds 源中可能附带的任何旧版或冲突的 nikki 组件
-        find feeds/ -type d -name "luci-app-nikki" -exec rm -rf {} + 2>/dev/null || true
-        find feeds/ -type d -name "nikki" -exec rm -rf {} + 2>/dev/null || true
+        # 创建标准的本地物理口袋
+        mkdir -p package/custom
         
-        # 创建纯净的目标物理口袋
-        mkdir -p package/nikki
+        echo "=== 🔍 正在检索官方原生网络和界面组件中的 Nikki 资源... ==="
         
-        # 终极修正：直接从高能、公开且全天候同步的社区大仓中提取 Nikki 核心组件
-        echo "=== 📥 正在从社区综合大厂源拉取 Nikki 稳健代码... ==="
-        git clone --depth=1 https://github.com/kiddin9/openwrt-packages.git pac_raw
+        # 核心逻辑：直接在 ImmortalWrt 官方拉下来的原生 feeds 缓存里，把自带的 nikki 组件和 luci-app-nikki 提取出来
+        # 这样完全不需要过网络，100% 走本地文件复制，彻底免疫 128
+        FOUND_NIKKI=0
         
-        # 精准捕获：支持平移 luci-app-nikki 或纯 nikki 核心包结构
-        if [ -d "pac_raw/luci-app-nikki" ]; then
-          cp -a pac_raw/luci-app-nikki/* package/nikki/
-        elif [ -d "pac_raw/nikki" ]; then
-          cp -a pac_raw/nikki/* package/nikki/
+        if [ -d "feeds/packages/net/nikki" ]; then
+          cp -a feeds/packages/net/nikki package/custom/
+          FOUND_NIKKI=1
         fi
         
-        # 备用容错链：如果主大仓未命中，自动滑向另一个大厂源
-        if [ ! -f "package/nikki/Makefile" ]; then
-          echo "=== ⚠️ 主源未命中，正在启动备用大仓提取... ==="
-          rm -rf pac_raw
-          git clone --depth=1 https://github.com/sbwml/openwrt_pkgs.git pac_raw
-          if [ -d "pac_raw/luci-app-nikki" ]; then
-            cp -a pac_raw/luci-app-nikki/* package/nikki/
-          elif [ -d "pac_raw/nikki" ]; then
-            cp -a pac_raw/nikki/* package/nikki/
-          fi
+        if [ -d "feeds/luci/applications/luci-app-nikki" ]; then
+          cp -a feeds/luci/applications/luci-app-nikki package/custom/
+          FOUND_NIKKI=1
         fi
         
-        # 清理残留的缓存
-        rm -rf pac_raw
+        # 兼容性盲搜：万一官方调整了路径，直接全盘检索
+        if [ $FOUND_NIKKI -eq 0 ]; then
+          echo "=== ⚠️ 未在标准路径发现，启动本地全盘打捞... ==="
+          find feeds/ -type d -name "nikki" -exec cp -a {} package/custom/ \; 2>/dev/null || true
+          find feeds/ -type d -name "luci-app-nikki" -exec cp -a {} package/custom/ \; 2>/dev/null || true
+        fi
         
-        echo "=== 🟢 Nikki 源码强注成功！结构验证如下 ==="
-        ls -la package/nikki
+        echo "=== 🟢 Nikki 本地源码提取完毕！目录结构如下 ==="
+        ls -la package/custom
 
     - name: 📑 载入核心菜单并强行智能化注入底层
       run: |
