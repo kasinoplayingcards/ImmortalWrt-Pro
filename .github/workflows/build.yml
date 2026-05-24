@@ -13,6 +13,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      actions: write
 
     steps:
     - name: Checkout
@@ -57,37 +60,25 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: 🚀 降维打击 7.0：利用 ImmortalWrt 官方原生 Feeds 注入 Nikki (100% 根除128)
+    - name: 🚀 降维打击 7.0：利用 ImmortalWrt 官方原生 Feeds 提取并本地注入 Nikki (免网路握手)
       run: |
         cd openwrt
-        
-        # 创建标准的本地物理口袋
         mkdir -p package/custom
-        
-        echo "=== 🔍 正在检索官方原生网络和界面组件中的 Nikki 资源... ==="
-        
-        # 核心逻辑：直接在 ImmortalWrt 官方拉下来的原生 feeds 缓存里，把自带的 nikki 组件和 luci-app-nikki 提取出来
-        # 这样完全不需要过网络，100% 走本地文件复制，彻底免疫 128
         FOUND_NIKKI=0
         
         if [ -d "feeds/packages/net/nikki" ]; then
           cp -a feeds/packages/net/nikki package/custom/
           FOUND_NIKKI=1
         fi
-        
         if [ -d "feeds/luci/applications/luci-app-nikki" ]; then
           cp -a feeds/luci/applications/luci-app-nikki package/custom/
           FOUND_NIKKI=1
         fi
-        
-        # 兼容性盲搜：万一官方调整了路径，直接全盘检索
         if [ $FOUND_NIKKI -eq 0 ]; then
-          echo "=== ⚠️ 未在标准路径发现，启动本地全盘打捞... ==="
           find feeds/ -type d -name "nikki" -exec cp -a {} package/custom/ \; 2>/dev/null || true
           find feeds/ -type d -name "luci-app-nikki" -exec cp -a {} package/custom/ \; 2>/dev/null || true
         fi
-        
-        echo "=== 🟢 Nikki 本地源码提取完毕！目录结构如下 ==="
+        echo "=== 🟢 Nikki 本地源码平移完毕！目录验证： ==="
         ls -la package/custom
 
     - name: 📑 载入核心菜单并强行智能化注入底层
@@ -95,19 +86,22 @@ jobs:
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         cd openwrt
         
-        # 智能化网桥盲插脚本（192.168.11.1）
+        # 网络接口定向重组（eth1为WAN，eth0,2,3为LAN桥接）
         mkdir -p files/etc/uci-defaults
         cat << 'EOF' > files/etc/uci-defaults/99-custom-settings
         #!/bin/sh
-        ALL_IFS=$(ls /sys/class/net | grep -E '^eth|^en' | tr '\n' ' ')
-        if [ -n "$ALL_IFS" ]; then
-            uci set network.lan.device='br-lan'
-            uci set network.lan.type='bridge'
-            uci set network.lan.ports="$ALL_IFS"
-        fi
+        # 建立网桥，强行绑定 eth0, eth2, eth3 为局域网
+        uci set network.lan.device='br-lan'
+        uci set network.lan.type='bridge'
+        uci set network.lan.ports='eth0 eth2 eth3'
         uci set network.lan.ipaddr='192.168.11.1'
         uci set network.lan.netmask='255.255.255.0'
         uci set network.lan.ipv6=0
+        
+        # 强行指定 eth1 为专职 WAN 口，采用 DHCP 获取上级网络
+        uci set network.wan.device='eth1'
+        uci set network.wan.proto='dhcp'
+        
         uci del network.wan6
         uci set dhcp.lan.dhcpv6='disabled'
         uci del dhcp.lan.ra
@@ -122,6 +116,10 @@ jobs:
         exit 0
         EOF
         chmod +x files/etc/uci-defaults/99-custom-settings
+
+        # 固件大空间扩容核心黑魔法（Boot拉大到64M，系统根Rootfs分区直接拉大到1024M即1GB）
+        sed -i 's/CONFIG_TARGET_KERNEL_PARTSIZE=.*/CONFIG_TARGET_KERNEL_PARTSIZE=64/' .config
+        sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=1024/' .config
 
     - name: 🧬 固件结构预校验 (强注非交互终端环境变量)
       run: |
