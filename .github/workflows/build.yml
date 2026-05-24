@@ -121,9 +121,20 @@ jobs:
         sed -i 's/CONFIG_TARGET_KERNEL_PARTSIZE=.*/CONFIG_TARGET_KERNEL_PARTSIZE=64/' .config
         sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=1024/' .config
 
-    - name: 🧬 固件结构预校验 (强注非交互终端环境变量)
+    - name: 🧬 固件结构预校验 (强注非交互终端环境变量与组件开关)
       run: |
         cd openwrt
+        
+        # 【防漏包补丁】：在 .config 最末尾强行注入全局编译总开关
+        echo "" >> .config
+        echo "CONFIG_PACKAGE_nikki=y" >> .config
+        echo "CONFIG_PACKAGE_luci-app-nikki=y" >> .config
+        echo "CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y" >> .config
+        
+        # 补齐运行必须的底层依赖（证书与CA包，避免安全链接握手失败）
+        echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+        echo "CONFIG_PACKAGE_libustream-openssl=y" >> .config
+        
         export TERMINFO=/usr/share/terminfo
         export TERM=dumb
         make defconfig
