@@ -1,8 +1,7 @@
-# 🔽 官方标准基础依赖源
-src-git packets https://github.com/immortalwrt/packages.git;openwrt-23.05
-src-git luci https://github.com/immortalwrt/luci.git;openwrt-23.05
+src-git packages https://github.com/openwrt/packages.git;openwrt-23.05
+src-git luci https://github.com/openwrt/luci.git;openwrt-23.05
 src-git routing https://github.com/openwrt/routing.git;openwrt-23.05
 src-git telephony https://github.com/openwrt/telephony.git;openwrt-23.05
 
-# ⚡ 额外注入高兼容依赖源（专门用来给 Nikki 补齐残缺的 Golang 底座和依赖，全公开免密）
-src-git kenzok8 https://github.com/kenzok8/openwrt-packages.git;main
+# 稳定增强插件源（只保留成熟仓库）
+src-git small https://github.com/kenzok8/small-package.git;main
